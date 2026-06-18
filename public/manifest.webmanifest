@@ -1,0 +1,17 @@
+{
+  "name": "Familien-Reich",
+  "short_name": "Familien-Reich",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#10243d",
+  "description": "Ein Familien-Spielsystem für Haushalt, Aufgaben, Karten und Belohnungen.",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
