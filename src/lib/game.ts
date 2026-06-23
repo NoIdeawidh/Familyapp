@@ -71,7 +71,7 @@ export function completeTask(state: GameState, taskId: string, userId: string): 
     };
   });
 
-  const nextTasks = state.tasks.map((item) => {
+  const nextTasks = state.tasks.map((item): Task => {
     if (item.id !== taskId) return item;
     return {
       ...item,
@@ -100,7 +100,7 @@ export function approveTaskCompletion(state: GameState, taskId: string, userId: 
     return { ...item, underlings: item.underlings + task.valueInUnderlings };
   });
 
-  const nextTasks = state.tasks.map((item) => {
+  const nextTasks = state.tasks.map((item): Task => {
     if (item.id !== taskId) return item;
     const completions = item.completions.map((entry, index) => index === completionIndex ? { ...entry, approved: true } : entry);
     return {
@@ -147,7 +147,7 @@ export function claimField(state: GameState, userId: string, fieldId: string, ta
     return item;
   });
 
-  const nextFields = state.fields.map((item) => {
+  const nextFields = state.fields.map((item): Field => {
     if (item.id !== fieldId) return item;
     return {
       ...item,

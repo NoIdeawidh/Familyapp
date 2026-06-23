@@ -446,6 +446,7 @@ function App() {
                           key={task.id}
                           task={task}
                           currentUser={activeUser}
+                          users={state.users}
                           onComplete={() => handleTaskComplete(task.id)}
                           onApprove={(userId) => handleTaskApprove(task.id, userId)}
                         />
@@ -461,6 +462,7 @@ function App() {
                           key={task.id}
                           task={task}
                           currentUser={activeUser}
+                          users={state.users}
                           onComplete={() => handleTaskComplete(task.id)}
                           onApprove={(userId) => handleTaskApprove(task.id, userId)}
                         />
@@ -661,14 +663,17 @@ function App() {
 function TaskCard({
   task,
   currentUser,
+  users,
   onComplete,
   onApprove,
 }: {
   task: Task;
   currentUser: User;
+  users: User[];
   onComplete: () => void;
   onApprove: (userId: string) => void;
 }) {
+  const nameFor = (userId: string) => users.find((user) => user.id === userId)?.name ?? userId;
   const canComplete = task.type === 'open' || task.assignedTo === currentUser.id || currentUser.role !== 'player';
   const pendingCompletions = task.completions.filter((entry) => !entry.approved);
   const approvedCompletions = task.completions.filter((entry) => entry.approved);
@@ -701,7 +706,7 @@ function TaskCard({
           <div className="muted small">Wartende Bestätigungen</div>
           {pendingCompletions.map((entry) => (
             <div key={`${entry.userId}-${entry.completedAt}`} className="approval-row">
-              <span>{entry.userId}</span>
+              <span>{nameFor(entry.userId)}</span>
               <Button variant="secondary" onClick={() => onApprove(entry.userId)}>
                 Freigeben
               </Button>
@@ -961,7 +966,7 @@ function AdminFields({ state, setState }: { state: GameState; setState: (next: G
 
   function addField(form: HTMLFormElement) {
     const data = new FormData(form);
-    const id = uid('field', state.nextIds);
+    const id = `field_${state.nextIds.field ?? 1}`;
     const field: Field = {
       id,
       name: String(data.get('name') ?? `Feld ${id}`),
