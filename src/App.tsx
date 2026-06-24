@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { PERMISSIONS, type Permission } from './lib/permissions';
 import { ToastProvider } from './components/ui/Toast';
 import { AppShell } from './components/layout/AppShell';
 import { LandingPage } from './pages/LandingPage';
@@ -13,8 +14,8 @@ import { RewardsPage } from './pages/RewardsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { AdminPage } from './pages/admin/AdminPage';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { member, loading } = useAuth();
+function ProtectedRoute({ children, permission }: { children: React.ReactNode; permission?: Permission }) {
+  const { member, loading, hasPermission } = useAuth();
 
   if (loading) {
     return (
@@ -27,6 +28,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!member) {
     return <Navigate to="/" replace />;
+  }
+
+  // Guard the route by permission so a direct URL cannot bypass the nav, which
+  // already hides items the member is not allowed to use.
+  if (permission && !hasPermission(permission)) {
+    return <Navigate to="/app" replace />;
   }
 
   return <AppShell>{children}</AppShell>;
@@ -61,11 +68,11 @@ function AppRoutes() {
 
       {/* Protected routes */}
       <Route path="/app" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/app/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
-      <Route path="/app/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-      <Route path="/app/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
-      <Route path="/app/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
-      <Route path="/app/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+      <Route path="/app/tasks" element={<ProtectedRoute permission={PERMISSIONS.VIEW_OWN_TASKS}><TasksPage /></ProtectedRoute>} />
+      <Route path="/app/map" element={<ProtectedRoute permission={PERMISSIONS.VIEW_MAP}><MapPage /></ProtectedRoute>} />
+      <Route path="/app/rewards" element={<ProtectedRoute permission={PERMISSIONS.BUY_REWARDS}><RewardsPage /></ProtectedRoute>} />
+      <Route path="/app/leaderboard" element={<ProtectedRoute permission={PERMISSIONS.VIEW_LEADERBOARD}><LeaderboardPage /></ProtectedRoute>} />
+      <Route path="/app/admin" element={<ProtectedRoute permission={PERMISSIONS.ACCESS_ADMIN}><AdminPage /></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { pinToPassword, isValidPin } from '../../lib/pin';
@@ -19,6 +20,7 @@ interface InviteData {
 
 export function JoinFamilyPage() {
   const navigate = useNavigate();
+  const { refreshMember } = useAuth();
   const [step, setStep] = useState<Step>('code');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -156,6 +158,9 @@ export function JoinFamilyPage() {
         return;
       }
 
+      // The member is created server-side by redeem_invite, so refresh the auth
+      // context before navigating, otherwise the protected route bounces back.
+      await refreshMember();
       navigate('/app');
     } catch {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
