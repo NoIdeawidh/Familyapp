@@ -18,7 +18,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithPin: (memberId: string, pin: string) => Promise<{ error: string | null }>;
+  signInWithPin: (authEmail: string, pin: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   hasPermission: (perm: Permission) => boolean;
   refreshMember: () => Promise<void>;
@@ -114,21 +114,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signInWithPin = async (memberId: string, pin: string) => {
-    const { data: member } = await supabase
-      .from('family_members')
-      .select('auth_email')
-      .eq('id', memberId)
-      .single();
-
-    const typedMember = member as { auth_email: string | null } | null;
-
-    if (!typedMember?.auth_email) {
+  const signInWithPin = async (authEmail: string, pin: string) => {
+    // The synthetic login email is provided by the get_login_profiles RPC,
+    // because RLS hides family_members from a not-yet-authenticated visitor.
+    if (!authEmail) {
       return { error: 'Mitglied nicht gefunden.' };
     }
 
     const { error } = await supabase.auth.signInWithPassword({
-      email: typedMember.auth_email,
+      email: authEmail,
       password: pinToPassword(pin),
     });
 
@@ -150,9 +144,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasPermission = (perm: Permission) => state.permissions.has(perm);
 
   const refreshMember = async () => {
-    if (!state.user) return;
-    const { member, family, permissions } = await loadMemberData(state.user.id);
-    setState((prev) => ({ ...prev, member, family, permissions }));
+    // Read the user from the client directly instead of from state, because the
+    // caller (e.g. right after sign-up) may still hold a render in which the
+    // auth state has not yet propagated the new user.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { member, family, permissions } = await loadMemberData(user.id);
+    setState((prev) => ({ ...prev, session: prev.session, user, member, family, permissions, loading: false }));
   };
 
   return (

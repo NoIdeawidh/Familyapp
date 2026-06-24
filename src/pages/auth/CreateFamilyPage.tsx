@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
 export function CreateFamilyPage() {
   const navigate = useNavigate();
+  const { refreshMember } = useAuth();
   const [step, setStep] = useState<'family' | 'account'>('family');
   const [familyName, setFamilyName] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -80,6 +82,10 @@ export function CreateFamilyPage() {
         return;
       }
 
+      // The member was created server-side after sign-up, so the auth context
+      // still holds a null member. Refresh it before entering the app, otherwise
+      // the protected route bounces back to the landing page.
+      await refreshMember();
       navigate('/app');
     } catch {
       setError('Ein unerwarteter Fehler ist aufgetreten.');

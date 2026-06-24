@@ -15,6 +15,7 @@ interface LoginProfile {
   avatar: string;
   role: string;
   uses_pin: boolean;
+  auth_email: string | null;
 }
 
 export function LoginPage() {
@@ -67,7 +68,7 @@ export function LoginPage() {
       return;
     }
     setLoading(true);
-    const { error: err } = await signInWithPin(selectedProfile.id, pin);
+    const { error: err } = await signInWithPin(selectedProfile.auth_email ?? '', pin);
     setLoading(false);
     if (err) {
       setError('PIN ungültig.');
