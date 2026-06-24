@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ROLE_DEFAULTS } from '../../lib/permissions';
 
 export function CreateFamilyPage() {
   const navigate = useNavigate();
@@ -60,67 +59,26 @@ export function CreateFamilyPage() {
         return;
       }
 
-      if (!authData.user) {
-        setError('Registrierung fehlgeschlagen.');
+      if (!authData.session) {
+        setError('Registrierung fehlgeschlagen. Bitte E-Mail-Bestätigung in Supabase deaktivieren.');
         setLoading(false);
         return;
       }
 
-      const { data: family, error: familyError } = await supabase
-        .from('families')
-        .insert({ name: familyName.trim() })
-        .select()
-        .single();
+      // Bootstrap the whole family atomically (family + admin member + default
+      // permissions + rules + first season) via a SECURITY DEFINER RPC. Doing
+      // this client-side fails under RLS because INSERT ... RETURNING is checked
+      // against the SELECT policy, which a not-yet-member user cannot satisfy.
+      const { error: createError } = await supabase.rpc('create_family', {
+        p_family_name: familyName.trim(),
+        p_admin_name: adminName.trim(),
+      });
 
-      if (familyError || !family) {
+      if (createError) {
         setError('Familie konnte nicht erstellt werden.');
         setLoading(false);
         return;
       }
-
-      const { data: member, error: memberError } = await supabase
-        .from('family_members')
-        .insert({
-          family_id: family.id,
-          auth_user_id: authData.user.id,
-          name: adminName.trim(),
-          role: 'admin',
-          avatar: '👑',
-          auth_email: email,
-        })
-        .select()
-        .single();
-
-      if (memberError || !member) {
-        setError('Admin-Konto konnte nicht erstellt werden.');
-        setLoading(false);
-        return;
-      }
-
-      // Set default admin permissions
-      const permInserts = ROLE_DEFAULTS.admin.map((perm) => ({
-        member_id: member.id,
-        permission: perm,
-        granted: true,
-      }));
-
-      await supabase.from('member_permissions').insert(permInserts);
-
-      // Create default rules
-      await supabase.from('family_rules').insert({ family_id: family.id });
-
-      // Create first season
-      const now = new Date();
-      const endDate = new Date(now);
-      endDate.setMonth(endDate.getMonth() + 2);
-
-      await supabase.from('seasons').insert({
-        family_id: family.id,
-        name: 'Saison 1',
-        start_date: now.toISOString(),
-        end_date: endDate.toISOString(),
-        active: true,
-      });
 
       navigate('/app');
     } catch {
