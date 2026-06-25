@@ -19,6 +19,7 @@ export function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
   const [permissions, setPermissions] = useState<MemberPermission[]>([]);
   const [inviteCode, setInviteCode] = useState('');
+  const [inviteRole, setInviteRole] = useState<'player' | 'parent' | 'admin'>('player');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export function AdminMembers() {
     setPermissions(permsData ?? []);
   }
 
-  async function generateInviteCode(role: 'parent' | 'player') {
+  async function generateInviteCode(role: 'parent' | 'player' | 'admin') {
     if (!family) return;
 
     const { data: member } = await supabase
@@ -69,7 +70,8 @@ export function AdminMembers() {
     });
 
     setInviteCode(code);
-    toast(`Einladungscode erstellt: ${code} (gültig 24h)`);
+    const roleLabel = role === 'admin' ? 'Administrator' : role === 'parent' ? 'Elternteil' : 'Spieler';
+    toast(`Einladungscode für ${roleLabel} erstellt: ${code} (gültig 24h)`);
   }
 
   async function togglePermission(memberId: string, permission: Permission) {
@@ -107,11 +109,18 @@ export function AdminMembers() {
         <h2>Mitglieder</h2>
         {canInvite && (
           <div className="invite-actions">
-            <Button size="sm" onClick={() => generateInviteCode('player')}>
-              Spieler einladen
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => generateInviteCode('parent')}>
-              Elternteil einladen
+            <select
+              className="form-input"
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as 'player' | 'parent' | 'admin')}
+              aria-label="Rolle für Einladung"
+            >
+              <option value="player">Spieler</option>
+              <option value="parent">Elternteil</option>
+              <option value="admin">Administrator</option>
+            </select>
+            <Button size="sm" onClick={() => generateInviteCode(inviteRole)}>
+              Einladungscode erstellen
             </Button>
           </div>
         )}
@@ -121,7 +130,10 @@ export function AdminMembers() {
         <div className="invite-code-display">
           <strong>Einladungscode:</strong>
           <code className="code-badge">{inviteCode}</code>
-          <span className="muted small">Gültig für 24 Stunden, einmal verwendbar.</span>
+          <span className="muted small">
+            Die Rolle legt die Standard-Rechte fest. Einzelne Rechte kannst du nach dem Beitritt
+            pro Mitglied anpassen. Gültig für 24 Stunden, einmal verwendbar.
+          </span>
         </div>
       )}
 
@@ -192,12 +204,20 @@ function MemberEditForm({ member, onSave }: { member: Member; onSave: (data: Par
   const [buildingMaterial, setBuildingMaterial] = useState(member.building_material);
   const [underlings, setUnderlings] = useState(member.underlings);
 
+  // The admin is a pure manager and owns no resources, so resource fields are
+  // hidden and forced to zero when the member is (or becomes) an admin.
+  const isAdmin = role === 'admin';
+
   return (
     <form
       className="member-form"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave({ name, avatar, role, gold, building_material: buildingMaterial, underlings });
+        onSave(
+          isAdmin
+            ? { name, avatar, role, gold: 0, building_material: 0, underlings: 0 }
+            : { name, avatar, role, gold, building_material: buildingMaterial, underlings }
+        );
       }}
     >
       <div className="form-grid-3">
@@ -211,9 +231,15 @@ function MemberEditForm({ member, onSave }: { member: Member; onSave: (data: Par
             <option value="player">Spieler</option>
           </select>
         </div>
-        <Input label="Gold" type="number" value={gold} onChange={(e) => setGold(Number(e.target.value))} />
-        <Input label="Baumaterial" type="number" value={buildingMaterial} onChange={(e) => setBuildingMaterial(Number(e.target.value))} />
-        <Input label="Untertanen" type="number" value={underlings} onChange={(e) => setUnderlings(Number(e.target.value))} />
+        {isAdmin ? (
+          <p className="muted small">Administratoren besitzen keine Ressourcen oder Siegpunkte.</p>
+        ) : (
+          <>
+            <Input label="Gold" type="number" value={gold} onChange={(e) => setGold(Number(e.target.value))} />
+            <Input label="Baumaterial" type="number" value={buildingMaterial} onChange={(e) => setBuildingMaterial(Number(e.target.value))} />
+            <Input label="Untertanen" type="number" value={underlings} onChange={(e) => setUnderlings(Number(e.target.value))} />
+          </>
+        )}
       </div>
       <Button type="submit" size="sm">Speichern</Button>
     </form>

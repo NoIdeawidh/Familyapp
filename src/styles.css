@@ -275,6 +275,11 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
 .topbar-member { display: flex; align-items: center; gap: var(--space-2); }
 .topbar-actions { display: flex; gap: var(--space-2); }
 .brand { font-weight: 800; font-size: 1.1rem; color: var(--accent); }
+/* Mobile nav toggle: only relevant when the sidebar collapses (<=1024px). */
+.topbar-menu { display: none; font-size: 1.2rem; line-height: 1; }
+.sidebar-stats-admin { grid-template-columns: 1fr; }
+.sidebar-stat-wide { grid-column: 1 / -1; }
+.sidebar-backdrop { display: none; }
 
 .app-layout {
   display: grid;
@@ -407,8 +412,12 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
 .admin-item-actions { display: flex; gap: var(--space-2); align-items: center; }
 .admin-form { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-5); }
 
+/* Seasons */
+.season-active-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-1); }
+
 /* Members */
-.invite-actions { display: flex; gap: var(--space-2); }
+.invite-actions { display: flex; gap: var(--space-2); align-items: center; }
+.invite-actions select { max-width: 200px; }
 .invite-code-display { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: var(--good-bg); border-radius: var(--radius-md); margin-bottom: var(--space-5); flex-wrap: wrap; }
 .code-badge { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.1em; padding: var(--space-2) var(--space-4); background: white; border-radius: var(--radius-sm); border: 1px solid var(--line); }
 .members-list { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -429,8 +438,10 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
    ============================================================ */
 @media (max-width: 1024px) {
   .app-layout { grid-template-columns: 1fr; }
-  .sidebar { display: none; position: fixed; top: 57px; left: 0; right: 0; bottom: 0; z-index: 40; height: auto; }
+  .topbar-menu { display: inline-flex; }
+  .sidebar { display: none; position: fixed; top: 57px; left: 0; bottom: 0; z-index: 45; height: auto; width: 280px; max-width: 85%; box-shadow: var(--shadow-lg, 0 10px 40px rgba(0,0,0,0.18)); }
   .sidebar-open { display: flex; }
+  .sidebar-backdrop { display: block; position: fixed; inset: 57px 0 0 0; background: rgba(0,0,0,0.35); z-index: 44; }
   .map-layout { grid-template-columns: 1fr; }
   .leaderboard-columns { grid-template-columns: 1fr; }
   .tasks-columns { grid-template-columns: 1fr; }

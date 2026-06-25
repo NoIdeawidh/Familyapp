@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
@@ -20,14 +20,21 @@ interface LoginProfile {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, signInWithPin } = useAuth();
-  const [mode, setMode] = useState<LoginMode>('email');
+
+  const [rememberedFamily] = useState(getRememberedFamily());
+  // A PIN can only be used once this device is bound to a family. Until then the
+  // only way in is e-mail/password (admin), so we never expose the PIN mode.
+  const pinAvailable = !!rememberedFamily;
+  const forceEmail = searchParams.get('mode') === 'email';
+  const [mode, setMode] = useState<LoginMode>(pinAvailable && !forceEmail ? 'pin' : 'email');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [rememberedFamily] = useState(getRememberedFamily());
   const [profiles, setProfiles] = useState<LoginProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<LoginProfile | null>(null);
   const [pin, setPin] = useState('');
@@ -77,6 +84,8 @@ export function LoginPage() {
     navigate('/app');
   }
 
+  const pinProfiles = profiles.filter((p) => p.uses_pin);
+
   return (
     <div className="auth-page">
       <div className="auth-container">
@@ -85,18 +94,25 @@ export function LoginPage() {
         </button>
 
         <div className="auth-header">
-          <h1>Anmelden</h1>
-          <p className="muted">Melde dich mit deinem Konto an.</p>
+          <h1>{mode === 'pin' ? 'Schnellanmeldung' : 'Mit E-Mail anmelden'}</h1>
+          <p className="muted">
+            {mode === 'pin'
+              ? <>Wähle dein Profil in <strong>{rememberedFamily?.name}</strong> und gib deine PIN ein.</>
+              : 'Anmeldung für Administratoren mit E-Mail und Passwort.'}
+          </p>
         </div>
 
-        <div className="auth-mode-toggle">
-          <button className={`mode-btn ${mode === 'email' ? 'active' : ''}`} onClick={() => setMode('email')}>
-            E-Mail & Passwort
-          </button>
-          <button className={`mode-btn ${mode === 'pin' ? 'active' : ''}`} onClick={() => setMode('pin')}>
-            Spieler-PIN
-          </button>
-        </div>
+        {/* The PIN tab only appears after the device is bound to a family. */}
+        {pinAvailable && (
+          <div className="auth-mode-toggle">
+            <button className={`mode-btn ${mode === 'pin' ? 'active' : ''}`} onClick={() => { setMode('pin'); setError(''); }}>
+              Schnellanmeldung (PIN)
+            </button>
+            <button className={`mode-btn ${mode === 'email' ? 'active' : ''}`} onClick={() => { setMode('email'); setError(''); }}>
+              E-Mail (Admin)
+            </button>
+          </div>
+        )}
 
         {mode === 'email' ? (
           <form onSubmit={handleEmailLogin} className="auth-form">
@@ -105,27 +121,21 @@ export function LoginPage() {
             {error && <div className="auth-error">{error}</div>}
             <Button type="submit" fullWidth size="lg" loading={loading}>Anmelden</Button>
           </form>
-        ) : !rememberedFamily ? (
-          <div className="auth-form">
-            <p className="muted">
-              Auf diesem Gerät ist noch keine Familie hinterlegt. Bitte zuerst per E-Mail anmelden oder einer Familie beitreten.
-            </p>
-            <Button variant="secondary" fullWidth onClick={() => navigate('/auth/join-family')}>
-              Familie beitreten
-            </Button>
-          </div>
         ) : !selectedProfile ? (
           <div className="auth-form">
-            <p className="muted small">Familie: <strong>{rememberedFamily.name}</strong> · <button className="link-btn" onClick={() => { forgetFamily(); navigate(0); }}>wechseln</button></p>
+            <p className="muted small">
+              Familie: <strong>{rememberedFamily?.name}</strong> ·{' '}
+              <button className="link-btn" onClick={() => { forgetFamily(); navigate(0); }}>wechseln</button>
+            </p>
             <div className="profile-picker">
-              {profiles.filter((p) => p.uses_pin).map((profile) => (
+              {pinProfiles.map((profile) => (
                 <button key={profile.id} className="profile-card" onClick={() => setSelectedProfile(profile)}>
                   <span className="profile-avatar">{profile.avatar}</span>
                   <span className="profile-name">{profile.name}</span>
                 </button>
               ))}
-              {profiles.filter((p) => p.uses_pin).length === 0 && (
-                <p className="muted">Keine Spieler-Profile in dieser Familie.</p>
+              {pinProfiles.length === 0 && (
+                <p className="muted">Noch keine Profile mit PIN in dieser Familie.</p>
               )}
             </div>
           </div>

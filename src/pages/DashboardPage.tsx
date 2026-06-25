@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { StatCard } from '../components/ui/Card';
+import { isPlayingMember } from '../lib/permissions';
 
 export function DashboardPage() {
   const { member, family } = useAuth();
@@ -10,8 +11,12 @@ export function DashboardPage() {
     pendingApprovals: 0,
     ownedFields: 0,
     seasonRank: 0,
+    activeMembers: 0,
+    totalRewards: 0,
   });
   const [season, setSeason] = useState<{ name: string; end_date: string } | null>(null);
+
+  const isPlaying = !!member && isPlayingMember(member.role);
 
   useEffect(() => {
     if (!member || !family) return;
@@ -44,12 +49,25 @@ export function DashboardPage() {
         .eq('family_id', family!.id)
         .eq('owner_id', member!.id);
 
-      // Rank calculation
+      const { count: activeMembers } = await supabase
+        .from('family_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('family_id', family!.id)
+        .eq('active', true)
+        .neq('role', 'admin');
+
+      const { count: totalRewards } = await supabase
+        .from('rewards')
+        .select('*', { count: 'exact', head: true })
+        .eq('family_id', family!.id);
+
+      // Rank is computed over the competing (non-admin) members only.
       const { data: members } = await supabase
         .from('family_members')
         .select('id, season_victory_points')
         .eq('family_id', family!.id)
         .eq('active', true)
+        .neq('role', 'admin')
         .order('season_victory_points', { ascending: false });
 
       const rank = (members ?? []).findIndex((m) => m.id === member!.id) + 1;
@@ -59,6 +77,8 @@ export function DashboardPage() {
         pendingApprovals: pendingApprovals ?? 0,
         ownedFields: ownedFields ?? 0,
         seasonRank: rank || 1,
+        activeMembers: activeMembers ?? 0,
+        totalRewards: totalRewards ?? 0,
       });
     }
 
@@ -70,7 +90,7 @@ export function DashboardPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Dashboard</h1>
+        <h1>{isPlaying ? 'Dashboard' : 'Verwaltungs-Übersicht'}</h1>
         {season && (
           <p className="muted">
             {season.name} · endet am{' '}
@@ -80,12 +100,23 @@ export function DashboardPage() {
       </div>
 
       <div className="stat-grid">
-        <StatCard label="Untertanen" value={member.underlings} icon="👥" hint="Entstehen durch Aufgaben" />
-        <StatCard label="Gold" value={member.gold} icon="💰" hint="Für Belohnungen" />
-        <StatCard label="Baumaterial" value={member.building_material} icon="🧱" hint="Für Ausbau" />
-        <StatCard label="Siegpunkte" value={member.season_victory_points} icon="⚔️" hint={`Rang ${stats.seasonRank}`} />
-        <StatCard label="Offene Aufgaben" value={stats.openTasks} icon="📋" />
-        <StatCard label="Eigene Felder" value={stats.ownedFields} icon="🗺️" />
+        {isPlaying ? (
+          <>
+            <StatCard label="Untertanen" value={member.underlings} icon="👥" hint="Entstehen durch Aufgaben" />
+            <StatCard label="Gold" value={member.gold} icon="💰" hint="Für Belohnungen" />
+            <StatCard label="Baumaterial" value={member.building_material} icon="🧱" hint="Für Ausbau" />
+            <StatCard label="Siegpunkte" value={member.season_victory_points} icon="⚔️" hint={`Rang ${stats.seasonRank}`} />
+            <StatCard label="Offene Aufgaben" value={stats.openTasks} icon="📋" />
+            <StatCard label="Eigene Felder" value={stats.ownedFields} icon="🗺️" />
+          </>
+        ) : (
+          <>
+            <StatCard label="Aktive Spieler" value={stats.activeMembers} icon="👥" hint="Ohne Admin" />
+            <StatCard label="Offene Aufgaben" value={stats.openTasks} icon="📋" />
+            <StatCard label="Wartende Bestätigungen" value={stats.pendingApprovals} icon="⏳" />
+            <StatCard label="Belohnungen" value={stats.totalRewards} icon="🎁" />
+          </>
+        )}
       </div>
 
       {stats.pendingApprovals > 0 && (
