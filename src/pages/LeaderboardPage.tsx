@@ -21,6 +21,9 @@ export function LeaderboardPage() {
         .select('*')
         .eq('family_id', family!.id)
         .eq('active', true)
+        // The admin is a pure manager and never competes, so it is excluded
+        // from the leaderboard and the resource comparison.
+        .neq('role', 'admin')
         .order('season_victory_points', { ascending: false });
 
       setMembers(data ?? []);

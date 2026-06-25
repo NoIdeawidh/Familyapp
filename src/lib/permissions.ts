@@ -39,27 +39,56 @@ export const PERMISSIONS = {
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
+export type Role = 'admin' | 'parent' | 'player';
+
+// The admin is a pure administrator and never participates in the game, so this
+// single source of truth gates every "play" action (completing tasks, buying
+// rewards, claiming fields, owning resources/victory points, leaderboard entry).
+export function isPlayingMember(role: Role): boolean {
+  return role !== 'admin';
+}
+
 export const ROLE_DEFAULTS: Record<'admin' | 'parent' | 'player', Permission[]> = {
-  admin: Object.values(PERMISSIONS),
+  // Pure manager: full management rights but no "play" rights (no completing
+  // tasks, buying rewards, claiming fields or owning stats/victory points).
+  // Kept in sync with role_default_permissions() in migration 004.
+  admin: [
+    PERMISSIONS.VIEW_OWN_TASKS,
+    PERMISSIONS.CREATE_TASKS,
+    PERMISSIONS.EDIT_TASKS,
+    PERMISSIONS.DELETE_TASKS,
+    PERMISSIONS.APPROVE_TASKS,
+    PERMISSIONS.CREATE_REWARDS,
+    PERMISSIONS.EDIT_REWARDS,
+    PERMISSIONS.DELETE_REWARDS,
+    PERMISSIONS.VIEW_MAP,
+    PERMISSIONS.MANAGE_MAP,
+    PERMISSIONS.VIEW_LEADERBOARD,
+    PERMISSIONS.MANAGE_SEASONS,
+    PERMISSIONS.MANAGE_MEMBERS,
+    PERMISSIONS.INVITE_MEMBERS,
+    PERMISSIONS.MANAGE_PERMISSIONS,
+    PERMISSIONS.RESET_PINS,
+    PERMISSIONS.ACCESS_ADMIN,
+    PERMISSIONS.MANAGE_RULES,
+    PERMISSIONS.ADJUST_RESOURCES,
+  ],
   parent: [
     PERMISSIONS.VIEW_OWN_TASKS,
     PERMISSIONS.COMPLETE_OWN_TASKS,
     PERMISSIONS.CREATE_TASKS,
     PERMISSIONS.EDIT_TASKS,
+    PERMISSIONS.DELETE_TASKS,
     PERMISSIONS.APPROVE_TASKS,
     PERMISSIONS.BUY_REWARDS,
     PERMISSIONS.CREATE_REWARDS,
     PERMISSIONS.EDIT_REWARDS,
+    PERMISSIONS.DELETE_REWARDS,
     PERMISSIONS.VIEW_MAP,
     PERMISSIONS.CLAIM_FIELDS,
     PERMISSIONS.VIEW_OWN_STATS,
     PERMISSIONS.VIEW_LEADERBOARD,
     PERMISSIONS.MANAGE_SEASONS,
-    PERMISSIONS.MANAGE_MEMBERS,
-    PERMISSIONS.INVITE_MEMBERS,
-    PERMISSIONS.RESET_PINS,
-    PERMISSIONS.ACCESS_ADMIN,
-    PERMISSIONS.ADJUST_RESOURCES,
   ],
   player: [
     PERMISSIONS.VIEW_OWN_TASKS,

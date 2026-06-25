@@ -34,7 +34,9 @@ export function JoinFamilyPage() {
   const [loading, setLoading] = useState(false);
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
 
-  const usesPin = inviteData?.role === 'player';
+  // Players and parents log in with a PIN (synthetic e-mail). Only an admin
+  // invite uses a real e-mail/password, since the admin is the account holder.
+  const usesPin = !!inviteData && inviteData.role !== 'admin';
 
   async function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();

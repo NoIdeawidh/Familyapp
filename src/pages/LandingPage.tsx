@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { getRememberedFamily } from '../lib/deviceFamily';
 
 export function LandingPage() {
   const navigate = useNavigate();
   const [showInfo, setShowInfo] = useState(false);
+  const [rememberedFamily] = useState(getRememberedFamily());
 
   return (
     <div className="landing">
@@ -19,14 +21,26 @@ export function LandingPage() {
         </div>
 
         <div className="landing-actions">
-          <Button size="lg" fullWidth onClick={() => navigate('/auth/create-family')}>
+          {/* Quick PIN login only appears once this device has been bound to a
+              family (after a first join or e-mail login). */}
+          {rememberedFamily && (
+            <Button size="lg" fullWidth onClick={() => navigate('/auth/login')}>
+              Schnellanmeldung · {rememberedFamily.name}
+            </Button>
+          )}
+          <Button
+            size="lg"
+            variant={rememberedFamily ? 'secondary' : 'primary'}
+            fullWidth
+            onClick={() => navigate('/auth/create-family')}
+          >
             Familie erstellen
           </Button>
           <Button size="lg" variant="secondary" fullWidth onClick={() => navigate('/auth/join-family')}>
             Familie beitreten
           </Button>
-          <Button size="lg" variant="ghost" fullWidth onClick={() => navigate('/auth/login')}>
-            Anmelden
+          <Button size="lg" variant="ghost" fullWidth onClick={() => navigate('/auth/login?mode=email')}>
+            Mit E-Mail anmelden
           </Button>
         </div>
 
