@@ -86,9 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        loadMemberData(session.user.id).then(({ member, family, permissions }) => {
-          setState({ session, user: session.user, member, family, permissions, loading: false });
-        });
+        // Defer the member/family queries out of the callback. supabase-js holds
+        // the auth lock while this callback runs, so awaiting other supabase
+        // calls here deadlocks the sign-in promise (it never resolves and the UI
+        // hangs on a spinner). Scheduling with setTimeout lets the lock release.
+        const userId = session.user.id;
+        setTimeout(() => {
+          loadMemberData(userId).then(({ member, family, permissions }) => {
+            setState({ session, user: session.user, member, family, permissions, loading: false });
+          });
+        }, 0);
       } else {
         setState({
           session: null,
