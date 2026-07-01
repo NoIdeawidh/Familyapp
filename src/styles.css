@@ -4,20 +4,23 @@
 
 :root {
   color-scheme: light;
-  --bg: #f5f7fa;
-  --bg-subtle: #eef2f7;
-  --panel: rgba(255, 255, 255, 0.88);
+  --bg: #f4f5fb;
+  --bg-subtle: #ecedf6;
+  --panel: rgba(255, 255, 255, 0.9);
   --panel-solid: #ffffff;
-  --text: #1a2b3d;
-  --text-secondary: #526478;
-  --muted: #6b7f94;
-  --line: rgba(26, 43, 61, 0.1);
-  --line-strong: rgba(26, 43, 61, 0.18);
+  --text: #1e2233;
+  --text-secondary: #565d78;
+  --muted: #767d96;
+  --line: rgba(30, 34, 51, 0.1);
+  --line-strong: rgba(30, 34, 51, 0.18);
 
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-subtle: rgba(37, 99, 235, 0.08);
-  --accent-ring: rgba(37, 99, 235, 0.2);
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: rgba(79, 70, 229, 0.08);
+  --accent-ring: rgba(79, 70, 229, 0.22);
+
+  --gold: #c8941a;
+  --gold-subtle: rgba(200, 148, 26, 0.12);
 
   --good: #16a34a;
   --good-bg: rgba(22, 163, 74, 0.08);
@@ -58,6 +61,9 @@ body {
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
+  background-image: radial-gradient(1200px 600px at 100% -10%, rgba(79, 70, 229, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(200, 148, 26, 0.05), transparent 55%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font: inherit; }
@@ -490,3 +496,22 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
 .season-table th { color: var(--text-secondary); font-weight: 600; }
 .season-table td:first-child { width: 2rem; color: var(--text-secondary); }
 .season-rewards { margin: 0; padding-left: var(--space-4); display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+
+/* ============================================================
+   POLISH (PR E) – targeted refinements
+   ============================================================ */
+.brand { display: inline-flex; align-items: center; gap: 6px; letter-spacing: -0.01em; }
+.brand::before { content: "👑"; font-size: 1rem; }
+.topbar { border-bottom: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.avatar-lg {
+  background: linear-gradient(135deg, var(--accent-subtle), var(--gold-subtle));
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.card { transition: box-shadow 0.15s ease, transform 0.15s ease; }
+.nav-item.active { box-shadow: inset 3px 0 0 var(--accent); }
+.page-header h1 {
+  background: linear-gradient(120deg, var(--text) 30%, var(--accent) 130%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.sidebar-stat strong { color: var(--text); }
