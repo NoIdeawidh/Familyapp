@@ -11,6 +11,7 @@ export function AdminRules() {
   const [fieldClaimCost, setFieldClaimCost] = useState(1);
   const [takeoverCost, setTakeoverCost] = useState(2);
   const [seasonLengthWeeks, setSeasonLengthWeeks] = useState(4);
+  const [mapSize, setMapSize] = useState(19);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function AdminRules() {
         setFieldClaimCost(data.field_claim_cost);
         setTakeoverCost(data.takeover_cost);
         setSeasonLengthWeeks(data.season_length_weeks ?? 4);
+        setMapSize(data.map_size ?? 19);
       }
       setLoading(false);
     }
@@ -44,6 +46,7 @@ export function AdminRules() {
         field_claim_cost: fieldClaimCost,
         takeover_cost: takeoverCost,
         season_length_weeks: seasonLengthWeeks,
+        map_size: mapSize,
       })
       .eq('family_id', family.id);
 
@@ -80,6 +83,14 @@ export function AdminRules() {
             onChange={(e) => setSeasonLengthWeeks(Number(e.target.value))}
             min={1}
             max={52}
+          />
+          <Input
+            label="Kartengröße (Anzahl Felder)"
+            type="number"
+            value={mapSize}
+            onChange={(e) => setMapSize(Number(e.target.value))}
+            min={7}
+            max={60}
           />
         </div>
         <Button type="submit" size="sm">Regeln speichern</Button>
