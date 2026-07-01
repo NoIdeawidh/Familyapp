@@ -22,12 +22,14 @@ export function DashboardPage() {
     if (!member || !family) return;
 
     async function loadDashboard() {
+      await supabase.rpc('archive_expired_season', { p_family_id: family!.id });
+
       const { data: activeSeason } = await supabase
         .from('seasons')
         .select('name, end_date')
         .eq('family_id', family!.id)
         .eq('active', true)
-        .single();
+        .maybeSingle();
 
       setSeason(activeSeason);
 

@@ -10,7 +10,7 @@ export function AdminRules() {
   const { toast } = useToast();
   const [fieldClaimCost, setFieldClaimCost] = useState(1);
   const [takeoverCost, setTakeoverCost] = useState(2);
-  const [seasonLengthMonths, setSeasonLengthMonths] = useState(2);
+  const [seasonLengthWeeks, setSeasonLengthWeeks] = useState(4);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function AdminRules() {
       if (data) {
         setFieldClaimCost(data.field_claim_cost);
         setTakeoverCost(data.takeover_cost);
-        setSeasonLengthMonths(data.season_length_months);
+        setSeasonLengthWeeks(data.season_length_weeks ?? 4);
       }
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export function AdminRules() {
       .update({
         field_claim_cost: fieldClaimCost,
         takeover_cost: takeoverCost,
-        season_length_months: seasonLengthMonths,
+        season_length_weeks: seasonLengthWeeks,
       })
       .eq('family_id', family.id);
 
@@ -74,12 +74,12 @@ export function AdminRules() {
             min={1}
           />
           <Input
-            label="Saisonlänge (Monate)"
+            label="Saisonlänge (Wochen)"
             type="number"
-            value={seasonLengthMonths}
-            onChange={(e) => setSeasonLengthMonths(Number(e.target.value))}
+            value={seasonLengthWeeks}
+            onChange={(e) => setSeasonLengthWeeks(Number(e.target.value))}
             min={1}
-            max={12}
+            max={52}
           />
         </div>
         <Button type="submit" size="sm">Regeln speichern</Button>
