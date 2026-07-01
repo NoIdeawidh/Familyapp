@@ -63,11 +63,16 @@ export interface Task {
   value_in_underlings: number;
   needs_approval: boolean;
   repeatable: boolean;
+  recurrence: Recurrence;
+  recurrence_interval_days: number | null;
+  due_date: string | null;
   status: 'open' | 'pending' | 'done';
   category: string;
   created_by: string;
   created_at: string;
 }
+
+export type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
 
 export interface TaskCompletion {
   id: string;

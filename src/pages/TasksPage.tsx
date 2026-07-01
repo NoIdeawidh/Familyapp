@@ -6,8 +6,9 @@ import { Input, Textarea } from '../components/ui/Input';
 import { Pill } from '../components/ui/Pill';
 import { useToast } from '../components/ui/Toast';
 import { PERMISSIONS, isPlayingMember } from '../lib/permissions';
+import { recurrenceLabel, taskStateForMember, isOverdue } from '../lib/tasks';
 
-import type { Task, TaskCompletion, FamilyMember } from '../lib/types';
+import type { Task, TaskCompletion, FamilyMember, Recurrence } from '../lib/types';
 
 interface TaskInput {
   title: string;
@@ -16,8 +17,23 @@ interface TaskInput {
   assigned_to: string | null;
   value_in_underlings: number;
   needs_approval: boolean;
+  recurrence: Recurrence;
+  recurrence_interval_days: number | null;
+  due_date: string | null;
   repeatable: boolean;
   category: string;
+}
+
+function toLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+}
+
+function fromLocalInput(local: string): string | null {
+  if (!local) return null;
+  return new Date(local).toISOString();
 }
 
 export function TasksPage() {
@@ -28,11 +44,13 @@ export function TasksPage() {
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const canCreate = hasPermission(PERMISSIONS.CREATE_TASKS);
+  const canEdit = hasPermission(PERMISSIONS.EDIT_TASKS);
   const canDelete = hasPermission(PERMISSIONS.DELETE_TASKS);
   const canApprove = hasPermission(PERMISSIONS.APPROVE_TASKS);
-  const canManage = canCreate || canDelete || hasPermission(PERMISSIONS.EDIT_TASKS);
+  const canManage = canCreate || canDelete || canEdit;
   const isPlaying = !!member && isPlayingMember(member.role) && hasPermission(PERMISSIONS.COMPLETE_OWN_TASKS);
 
   useEffect(() => {
@@ -67,8 +85,12 @@ export function TasksPage() {
     setLoading(false);
   }
 
-  async function handleComplete(taskId: string) {
+  async function handleComplete(task: Task) {
     if (!member || !family) return;
+    if (isOverdue(task)) {
+      toast('Frist abgelaufen – Aufgabe kann nicht mehr erledigt werden.', 'error');
+      return;
+    }
 
     const { data: season } = await supabase
       .from('seasons')
@@ -82,11 +104,8 @@ export function TasksPage() {
       return;
     }
 
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
-
     await supabase.from('task_completions').insert({
-      task_id: taskId,
+      task_id: task.id,
       member_id: member.id,
       season_id: season.id,
       approved: !task.needs_approval,
@@ -133,6 +152,13 @@ export function TasksPage() {
     await supabase.from('tasks').insert({ family_id: family.id, created_by: member.id, ...data });
     toast('Aufgabe erstellt');
     setShowCreate(false);
+    loadTasks();
+  }
+
+  async function updateTask(id: string, data: TaskInput) {
+    await supabase.from('tasks').update(data).eq('id', id);
+    toast('Aufgabe aktualisiert');
+    setEditingId(null);
     loadTasks();
   }
 
@@ -203,7 +229,7 @@ export function TasksPage() {
                   task={task}
                   memberId={member.id}
                   completions={completions.filter((c) => c.task_id === task.id)}
-                  onComplete={() => handleComplete(task.id)}
+                  onComplete={() => handleComplete(task)}
                 />
               ))}
             </div>
@@ -219,7 +245,7 @@ export function TasksPage() {
                   task={task}
                   memberId={member.id}
                   completions={completions.filter((c) => c.task_id === task.id)}
-                  onComplete={() => handleComplete(task.id)}
+                  onComplete={() => handleComplete(task)}
                 />
               ))}
             </div>
@@ -232,13 +258,15 @@ export function TasksPage() {
           <div className="admin-section-header">
             <h2>Verwaltung</h2>
             {canCreate && (
-              <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
+              <Button size="sm" onClick={() => { setShowCreate(!showCreate); setEditingId(null); }}>
                 {showCreate ? 'Abbrechen' : 'Neue Aufgabe'}
               </Button>
             )}
           </div>
 
-          {showCreate && canCreate && <TaskForm members={members} onSubmit={createTask} />}
+          {showCreate && canCreate && (
+            <TaskForm members={members} onSubmit={createTask} submitLabel="Aufgabe erstellen" />
+          )}
 
           <div className="admin-list">
             {tasks.map((task) => (
@@ -247,7 +275,8 @@ export function TasksPage() {
                   <div>
                     <strong>{task.title}</strong>
                     <span className="muted small">
-                      {' '}· {task.category} · {task.value_in_underlings} Untertanen
+                      {' '}· {task.category} · {task.value_in_underlings} Untertanen · {recurrenceLabel(task)}
+                      {task.due_date ? ` · Frist ${new Date(task.due_date).toLocaleDateString('de-DE')}` : ''}
                       {task.type === 'private' && task.assigned_to ? ` · ${memberName(task.assigned_to)}` : ''}
                     </span>
                   </div>
@@ -255,11 +284,24 @@ export function TasksPage() {
                     <span className={`badge badge-${task.type === 'private' ? 'warn' : 'neutral'}`}>
                       {task.type === 'private' ? 'privat' : 'offen'}
                     </span>
+                    {canEdit && (
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingId(editingId === task.id ? null : task.id); setShowCreate(false); }}>
+                        {editingId === task.id ? 'Schließen' : 'Bearbeiten'}
+                      </Button>
+                    )}
                     {canDelete && (
                       <Button size="sm" variant="danger" onClick={() => deleteTask(task.id)}>Löschen</Button>
                     )}
                   </div>
                 </div>
+                {editingId === task.id && canEdit && (
+                  <TaskForm
+                    members={members}
+                    initial={task}
+                    submitLabel="Änderungen speichern"
+                    onSubmit={(data) => updateTask(task.id, data)}
+                  />
+                )}
               </div>
             ))}
             {tasks.length === 0 && <p className="muted">Noch keine Aufgaben erstellt.</p>}
@@ -281,43 +323,65 @@ function TaskItem({
   completions: TaskCompletion[];
   onComplete: () => void;
 }) {
-  const myCompletion = completions.find((c) => c.member_id === memberId);
-  const isPending = myCompletion && !myCompletion.approved;
-  const isDone = myCompletion?.approved;
-  const canDo = !isPending && !isDone && (task.type === 'open' || task.assigned_to === memberId);
+  const state = taskStateForMember(task, completions, memberId);
+  const canDo = state === 'available' && (task.type === 'open' || task.assigned_to === memberId);
+
+  const pill =
+    state === 'pending' ? <Pill tone="warn">wartend</Pill>
+    : state === 'done' ? <Pill tone="good">erledigt</Pill>
+    : state === 'overdue' ? <Pill tone="danger">abgelaufen</Pill>
+    : <Pill tone="neutral">offen</Pill>;
+
+  const buttonLabel =
+    state === 'pending' ? 'Wartend...'
+    : state === 'done' ? 'Erledigt'
+    : state === 'overdue' ? 'Frist abgelaufen'
+    : 'Abhaken';
 
   return (
     <div className="card card-pad-md task-card">
       <div className="task-header">
         <strong>{task.title}</strong>
-        <Pill tone={isPending ? 'warn' : isDone ? 'good' : 'neutral'}>
-          {isPending ? 'wartend' : isDone ? 'erledigt' : 'offen'}
-        </Pill>
+        {pill}
       </div>
       {task.description && <p className="task-desc">{task.description}</p>}
       <div className="task-meta">
         <span>{task.value_in_underlings} Untertanen</span>
         <span>{task.category}</span>
+        <span>{recurrenceLabel(task)}</span>
+        {task.due_date && <span>Frist: {new Date(task.due_date).toLocaleDateString('de-DE')}</span>}
         {task.needs_approval && <span>Bestätigung nötig</span>}
       </div>
       <div className="task-actions">
         <Button size="sm" onClick={onComplete} disabled={!canDo}>
-          {isPending ? 'Wartend...' : isDone ? 'Erledigt' : 'Abhaken'}
+          {buttonLabel}
         </Button>
       </div>
     </div>
   );
 }
 
-function TaskForm({ members, onSubmit }: { members: FamilyMember[]; onSubmit: (data: TaskInput) => void }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [type, setType] = useState<'private' | 'open'>('open');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [value, setValue] = useState(1);
-  const [needsApproval, setNeedsApproval] = useState(false);
-  const [repeatable, setRepeatable] = useState(true);
-  const [category, setCategory] = useState('Allgemein');
+function TaskForm({
+  members,
+  onSubmit,
+  initial,
+  submitLabel,
+}: {
+  members: FamilyMember[];
+  onSubmit: (data: TaskInput) => void;
+  initial?: Task;
+  submitLabel: string;
+}) {
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [type, setType] = useState<'private' | 'open'>(initial?.type ?? 'open');
+  const [assignedTo, setAssignedTo] = useState(initial?.assigned_to ?? '');
+  const [value, setValue] = useState(initial?.value_in_underlings ?? 1);
+  const [needsApproval, setNeedsApproval] = useState(initial?.needs_approval ?? false);
+  const [recurrence, setRecurrence] = useState<Recurrence>(initial?.recurrence ?? 'none');
+  const [intervalDays, setIntervalDays] = useState(initial?.recurrence_interval_days ?? 7);
+  const [dueDate, setDueDate] = useState(toLocalInput(initial?.due_date ?? null));
+  const [category, setCategory] = useState(initial?.category ?? 'Allgemein');
 
   // Only members who actually play can be assigned a private task.
   const assignable = members.filter((m) => isPlayingMember(m.role));
@@ -332,7 +396,10 @@ function TaskForm({ members, onSubmit }: { members: FamilyMember[]; onSubmit: (d
       assigned_to: type === 'private' ? assignedTo || null : null,
       value_in_underlings: value,
       needs_approval: needsApproval,
-      repeatable,
+      recurrence,
+      recurrence_interval_days: recurrence === 'custom' ? Math.max(1, intervalDays) : null,
+      due_date: fromLocalInput(dueDate),
+      repeatable: recurrence !== 'none',
       category: category.trim() || 'Allgemein',
     });
   }
@@ -360,15 +427,42 @@ function TaskForm({ members, onSubmit }: { members: FamilyMember[]; onSubmit: (d
         )}
         <Input label="Wert (Untertanen)" type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} min={1} />
         <div className="form-field">
+          <label className="form-label">Wiederholung</label>
+          <select className="form-input" value={recurrence} onChange={(e) => setRecurrence(e.target.value as Recurrence)}>
+            <option value="none">Einmalig</option>
+            <option value="daily">Täglich</option>
+            <option value="weekly">Wöchentlich</option>
+            <option value="monthly">Monatlich</option>
+            <option value="custom">Benutzerdefiniert</option>
+          </select>
+        </div>
+        {recurrence === 'custom' && (
+          <Input
+            label="Intervall (Tage)"
+            type="number"
+            value={intervalDays}
+            onChange={(e) => setIntervalDays(Number(e.target.value))}
+            min={1}
+          />
+        )}
+        <div className="form-field">
+          <label className="form-label">Frist (optional)</label>
+          <input
+            className="form-input"
+            type="datetime-local"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+        </div>
+        <div className="form-field">
           <label className="form-label">Optionen</label>
           <div className="checkbox-group">
             <label><input type="checkbox" checked={needsApproval} onChange={(e) => setNeedsApproval(e.target.checked)} /> Bestätigung nötig</label>
-            <label><input type="checkbox" checked={repeatable} onChange={(e) => setRepeatable(e.target.checked)} /> Wiederholbar</label>
           </div>
         </div>
       </div>
       <Textarea label="Beschreibung" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-      <Button type="submit" size="sm">Aufgabe erstellen</Button>
+      <Button type="submit" size="sm">{submitLabel}</Button>
     </form>
   );
 }
