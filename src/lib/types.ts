@@ -125,4 +125,19 @@ export interface FamilyRules {
   field_claim_cost: number;
   takeover_cost: number;
   season_length_months: number;
+  season_length_weeks: number;
+}
+
+export interface SeasonResult {
+  id: string;
+  season_id: string;
+  family_id: string;
+  member_id: string | null;
+  member_name: string;
+  member_avatar: string;
+  rank: number;
+  victory_points: number;
+  tasks_completed: number;
+  underlings_earned: number;
+  created_at: string;
 }
